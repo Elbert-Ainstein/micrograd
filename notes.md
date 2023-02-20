@@ -16,6 +16,7 @@
 ### other notes 
 - No actual math in Neural Network codes
 - Just to know what derivative is measuring, aka. instantaneous slope
+
 ![derivative measure](derivative.png)
 
 
