@@ -19,4 +19,22 @@
 
 ![derivative measure](derivative.png)
 
+### the code section
 
+- The skeleton of the Value class; Keeps track of a single data value.
+```python
+class Value:
+    
+    def __init__(self, data):
+        self.data = data
+    
+    def __repr__(self):
+        return f"Value(data={self.data})"
+a = Value(2.0)
+print(a)
+```
+Therefore: --
+```sh
+python engine.py
+``` 
+gets us the answer of Value(data=2.0)
