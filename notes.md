@@ -417,9 +417,13 @@ What we are doing here is more like a inline gradient check, which is getting th
 - By symmetry, we now also know *dd/de* = 1.0 as well
 
 ### So now we understand how *c* and *e* affect *d*, and how *d* impact *L*, how do we write *dL/dc*? The answer is ***Chain rule*** 
+
 ![chain-rule](chainRule.png)
+
 In this case, we are using this notation instead:
+
 ![chain-rule2](chainRule2.png)
+
 - For example, if *dz/dy* = 2, and *dy/dx* = 4, then *dz/dx* = 8
 
 - This makes *dL/dc* = *dL/dd* * *dd/dc*
@@ -435,4 +439,8 @@ In this case, we are using this notation instead:
 - *dL/da* = *dL/de* * *de/da* = 6
 - *a*.grad = *e*.grad * *b* = -2.0 * -3.0 = 6
 - *b*.grad = *e*.grad * *a* = -2.0 * 2.0 = -4
+
+### Essentially, we iterated throught the nodes and locally applied the chain rule. We know what the effect *L* has on the output, and we look at how the output was produced. We go on and multiply the local derivatives.
+
+# **This essentially backpropagation, a recursive application of chain rule backwards**
 
