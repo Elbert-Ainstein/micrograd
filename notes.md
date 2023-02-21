@@ -355,4 +355,26 @@ def draw_dot(root):
 ```
 ### time to work with the gradient
 - What is the derivative of L with respect to L for example
-- 33:00
+- Well derivative of L with respect to L is 1.
+- Time to calculate things like dL/dd and dL/df
+
+if 
+```python
+L = d * f
+```
+what is
+```python
+dL/dd = ?
+```
+Well the answer is *f*, if you don't understand why you can do some derivative revision.
+
+The value of *d* is obvious, which is -2, 
+this also makes the grad for variable *f* to be equal to the value of *d*, which is 4.
+```diff
++ f.grad = 4.0
++ d.grad = -2.0
+```
+- 36:35
+
+
+
