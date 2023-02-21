@@ -232,9 +232,7 @@ In neural networks, we are interested for the derivative of the loss function wi
 
 - Cannot really go for derivative of L with respect to data cause data is fixed
 - However weights will be iterated using the gradient info
-```diff
-@@ Now it is time to make a variable that maintains the derivative of L with respect to the weights, right now with respect to the values, and the name of the variable in this case is going to be called grad @@
-```
+### Now it is time to make a variable that maintains the derivative of L with respect to the weights, right now with respect to the values, and the name of the variable in this case is going to be called grad 
 ```python
 class Value:
 
