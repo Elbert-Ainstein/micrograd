@@ -124,6 +124,7 @@ d = a * b + c
 # _children will be empty, and _prev will be an empty set
 print(d._prev)
 # {Value(data=-6.0), Value(data=10.0)}
+# (a*b) + c
 ```
 Now we know the children of every single value, but don't know what operation created it. Therefore needed another element _op:
 ```python
@@ -512,4 +513,8 @@ class Value:
     def tanh(self):
         x = self.data
         tanh = (math.exp(2*x) - 1)/(math.exp(2*x) + 1)
-        out = Value()
+        # One child, which is wrapped in a tuple
+        out = Value(t, (self, ), 'tanh')
+        return out
+```
+
