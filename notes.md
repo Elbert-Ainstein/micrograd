@@ -221,7 +221,7 @@ L = d * f; L.label='L'
 # L = -8.0
 ```
 
-## Time for some backpropagation action
+# Time for some backpropagation action. Example #1: Simple expressions
 We run back from L and calculate the gradient along those intermediate values.
 - Compute the derivative of the node *dL* with respect to *L*
 - *dL/dL* = 1
@@ -405,12 +405,12 @@ weirdCalcs()
 ```
 What we are doing here is more like a inline gradient check, which is getting the derivative with respect to all intermediate results, in numerical gradients here it is just estimating with small step sizes.
 
-# **THE CRUX OF BACKPROPAGATION, READ THIS**
+## **THE CRUX OF BACKPROPAGATION, READ THIS**
 - now we are doing *dL/dc* & *dL/de*; derivative of *L* with respect to *c* and derivative of *L* with respect to *e*.
 - reasons being we have already calculated the other gradients already with values *d* & *f*
 
 ### Now the question is how is L sensitive to *c*, in other words, how does the change of *c* impact L throught variable *d*
-> *d* = *e* + *c*, and *L* = d * *f*
+> *d* = *e* + *c*, and *L* = *d* * *f*
 
 - First thing to consider: what is *dd/dc* ?
 - Since we know *d* = *e* + *c*, this makes the differentiation of *c* + *e* with respect to *c* gives 1.0
@@ -442,5 +442,31 @@ In this case, we are using this notation instead:
 
 ### Essentially, we iterated throught the nodes and locally applied the chain rule. We know what the effect *L* has on the output, and we look at how the output was produced. We go on and multiply the local derivatives.
 
-# **This essentially backpropagation, a recursive application of chain rule backwards**
+## **That is basically backpropagation, a recursive application of chain rule backwards in a computational graph**
+
+# Backpropagation example #2: Neurons
+Typical Neuron that we will be following basically:
+![neuron](neuron.jpeg)
+
+```python
+# inputs x1, x2
+x1 = Value(2.0, label='x1')
+x2 = Value(0.0, label='x2')
+# weights w1, w2, which are synaptic strength 
+w1 = Value(-3.0, label='w1')
+w2 = Value(1.0, label='w2')
+# bias of the neuron
+b = Value(6.7, label='b')
+# x1*w1 + x2*w2 + b
+x1w1 = x1*w1; x1w1.label = 'x1*w1'
+x2w2 = x2*w2; x2w2.label = 'x2*w2'
+x1w1x2w2 = x1w1 + x2w2; x1w1x2w2.label = 'x1*w1 + x2*w2'
+# n is the cell body without the activation for now, it'll be added in the future
+n = x1w1x2w2 + b; n.label = n
+
+draw_dot(n)
+```
+
+
+
 
