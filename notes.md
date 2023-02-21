@@ -20,7 +20,7 @@ His github [here](https://github.com/karpathy)
 - No actual math in Neural Network codes
 - Just to know what derivative is measuring, aka. instantaneous slope
 
-![derivative measure](derivative.png)
+![derivative measure](/images/derivative.png)
 
 ### the code section + Processes and more notes
 
@@ -43,7 +43,7 @@ python engine.py
 gets us the answer of Value(data=2.0).
 The __repr__ method is making python printing the results in a nicer way, unless you want torture responses like this:
 
-![norepr](noRepr.png)
+![norepr](/images/noRepr.png)
 
 ### However, doing operations on Value objects is not doable yet, like adding Value(a) with Value(b)
 
@@ -418,11 +418,11 @@ What we are doing here is more like a inline gradient check, which is getting th
 
 ### So now we understand how *c* and *e* affect *d*, and how *d* impact *L*, how do we write *dL/dc*? The answer is ***Chain rule*** 
 
-![chain-rule](chainRule.png)
+![chain-rule](/images/chainRule.png)
 
 In this case, we are using this notation instead:
 
-![chain-rule2](chainRule2.png)
+![chain-rule2](/images/chainRule2.png)
 
 - For example, if *dz/dy* = 2, and *dy/dx* = 4, then *dz/dx* = 8
 
