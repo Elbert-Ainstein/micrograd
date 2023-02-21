@@ -54,7 +54,3 @@ def draw_dot(root):
         dot.edge(str(id(x)), str(id(y)) + y._op)
     
     return dot
-
-draw_dot(L)
-
-print(L)

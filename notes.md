@@ -223,9 +223,9 @@ L = d * f; L.label='L'
 
 ## Time for some backpropagation action
 We run back from L and calculate the gradient along those intermediate values.
-- Compute the derivative of the node d(L) (respect to L)
-- L d(L) = 1
-- Derivative of L with respect to f, respect to d, etc.
+- Compute the derivative of the node *dL* with respect to *L*
+- *dL/dL* = 1
+- Derivative of L with respect to *f*, respect to *d*, etc.
 - Derivative of output with respect to leaf nodes, which will eventually be weights of a neural network, whilst other leaf nodes will be data, which is not oftenly used
 
 In neural networks, we are interested for the derivative of the loss function with respect to the weights of a NN. (*I'll be calling neural networks NN from now on*)
@@ -353,16 +353,16 @@ def draw_dot(root):
     
     return dot
 ```
-### time to work with the gradient
-- What is the derivative of L with respect to L for example
-- Well derivative of L with respect to L is 1.
-- Time to calculate things like dL/dd and dL/df
+### Time to work with the gradient.
+- For example what is the derivative of *L* with respect to L?
+- Well derivative of *L* with respect to *L* is 1.
+- so what if wecalculate things like *dL/dd* and *dL/df*
 
 if 
 ```python
 L = d * f
 ```
-what is
+,
 ```python
 dL/dd = ?
 ```
@@ -374,7 +374,46 @@ this also makes the grad for variable *f* to be equal to the value of *d*, which
 + f.grad = 4.0
 + d.grad = -2.0
 ```
-- 36:35
+Here is the code for the stuff above:
+```python
+def weirdCalcs():
+    h = 0.001
+
+    a = Value(2.0, label='a')
+    b = Value(-3.0, label='b')
+    c = Value(10.0, label='c')
+    e = a * b; e.label='e'
+    d = e + c; d.label='d'
+    f = Value(-2.0, label='f')
+    L = d * f; L.label='L'
+    L1 = L.data
+
+    a = Value(2.0, label='a')
+    b = Value(-3.0, label='b')
+    c = Value(10.0, label='c')
+    e = a * b; e.label='e'
+    d = e + c; d.label='d'
+    d.data += h
+    f = Value(-2.0, label='f')
+    L = d * f; L.label='L'
+    L2 = L.data
+
+    print((L2 - L1)/h)
+
+weirdCalcs()
+# the result should be -2.000000000000668
+```
+What we are doing here is more like a inline gradient check, which is getting the derivative with respect to all intermediate results, in numerical gradients here it is just estimating with small step sizes.
+
+# **THE CRUX OF BACKPROPAGATION, READ THIS**
+- now we are doing dL/dc & dL/de; derivative of L with respect to c and derivative of L with respect to e.
+- reasons being we have already calculated the other gradients already with values *d* & *f*
+
+### Now the question is how is L sensitive to *c*, in other words, how does the change of *c* impact L throught variable *d*
+> *d* = *e* + *c*, and *L* = d * *f*
+
+- First thing to consider: what is *dd/dc* ?
+- Since we know *d* = *e* + *c*, this makes the differentiation of *c* + *e* with respect to *c* gives 1.0
 
 
 
