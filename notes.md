@@ -446,7 +446,7 @@ In this case, we are using this notation instead:
 
 # Backpropagation example #2: Neurons
 Typical Neuron that we will be following basically:
-![neuron](neuron.jpeg)
+![neuron](/images/neuron.jpeg)
 
 ```python
 # inputs x1, x2
