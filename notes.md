@@ -406,7 +406,7 @@ weirdCalcs()
 What we are doing here is more like a inline gradient check, which is getting the derivative with respect to all intermediate results, in numerical gradients here it is just estimating with small step sizes.
 
 # **THE CRUX OF BACKPROPAGATION, READ THIS**
-- now we are doing dL/dc & dL/de; derivative of L with respect to c and derivative of L with respect to e.
+- now we are doing *dL/dc* & *dL/de*; derivative of *L* with respect to *c* and derivative of *L* with respect to *e*.
 - reasons being we have already calculated the other gradients already with values *d* & *f*
 
 ### Now the question is how is L sensitive to *c*, in other words, how does the change of *c* impact L throught variable *d*
@@ -414,6 +414,25 @@ What we are doing here is more like a inline gradient check, which is getting th
 
 - First thing to consider: what is *dd/dc* ?
 - Since we know *d* = *e* + *c*, this makes the differentiation of *c* + *e* with respect to *c* gives 1.0
+- By symmetry, we now also know *dd/de* = 1.0 as well
 
+### So now we understand how *c* and *e* affect *d*, and how *d* impact *L*, how do we write *dL/dc*? The answer is ***Chain rule*** 
+![chain-rule](chainRule.png)
+In this case, we are using this notation instead:
+![chain-rule2](chainRule2.png)
+- For example, if *dz/dy* = 2, and *dy/dx* = 4, then *dz/dx* = 8
 
+- This makes *dL/dc* = *dL/dd* * *dd/dc*
+- *dL/dc* = -2.0
+- *c*.grad = -2.0
+- *e*.grad = -2.0
+
+**So now we can recurse back further, applying Chain rule**
+
+- *dL/de* = -2
+- *e* = *a* * *b*
+- *de/da* = *b* = -3.0
+- *dL/da* = *dL/de* * *de/da* = 6
+- *a*.grad = *e*.grad * *b* = -2.0 * -3.0 = 6
+- *b*.grad = *e*.grad * *a* = -2.0 * 2.0 = -4
 
