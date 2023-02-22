@@ -156,7 +156,7 @@ print(d._op)
 ```
 ***Have full mathematical expression & building data structure, and now we know how each value is made, by what expression and from what other Values***
 
-We want a nice way to visualize the stuff we are building out now, just to visually see things:
+We want a nice way to visualize the stuff we are building out now, just to visually see things, when it outputs things I recommend using jupyter notebook to see it:
 ```python
 from graphviz import Digraph
 
@@ -419,11 +419,11 @@ What we are doing here is more like a inline gradient check, which is getting th
 
 ### So now we understand how *c* and *e* affect *d*, and how *d* impact *L*, how do we write *dL/dc*? The answer is ***Chain rule*** 
 
-![chain-rule](/images/chainRule.png)
+![chain-rule](/images/chainRule_1.png)
 
 In this case, we are using this notation instead:
 
-![chain-rule2](/images/chainRule2.png)
+![chain-rule2](/images/chainRule_2.png)
 
 - For example, if *dz/dy* = 2, and *dy/dx* = 4, then *dz/dx* = 8
 
@@ -494,6 +494,7 @@ class Value:
 
     def __init__(self, data, _children=(), _op='', label=''):
         self.data = data
+        self.grad = 0.0
         self._prev = set(_children)
         self._op = _op
         self.label = label
@@ -514,7 +515,7 @@ class Value:
         x = self.data
         tanh = (math.exp(2*x) - 1)/(math.exp(2*x) + 1)
         # One child, which is wrapped in a tuple
-        out = Value(t, (self, ), 'tanh')
+        out = Value(tanh, (self, ), 'tanh')
         return out
     
     #other codes
@@ -522,13 +523,13 @@ class Value:
     draw_dot(o)
 ```
 This should produce the following result of your data is the exactly the same as mine. The tanh function is now pretty much a micrograd supported node as an operation:
-![tanh](/images/tanh.png)
 
+![tanh](/images/tanh.png)
 Now, as long as we know the derivative of tanh, we can backpropagate through it.
 
 Since the tanh function graph looks like this
-![tanhfunc](/images/tanhfunc.png)
 
+![tanhfunc](/images/tanhfunc.png)
 We can see that the bigger the input the more the function squashes it. For example if *b* = 8, the input into the tanh function would be 2, which will output 0.96 in the function.
 
 ### More backpropagation
@@ -543,11 +544,90 @@ Of course, in a NN setting, we care more about the weights *w1* and *w2*, and *d
 - I will set *b*.data = 6.8813735870195432 for good local derivative outputs. You can use any number.
 - *do/do* = 1; o.grad = 1
 
+Right now, the entire graph looks like this:
+
+![graph#1](/images/graph_1.png)
+
 To backpropagate through tanh, we need to know the local derivative of tanh.
 - *o* = tanh(*n*)
 - *do/dn* = ?
 - Since in calculus d/dx tanh(x) = 1 - tanh(*x*)**2,
 - *do/dn* = 1 - tanh(*n*)**2 (the ** notation means ^, so 2^3 = 8, and 2**3 = 8, same thing.)
-- so what this means is *do/dn* = 1 - o**2
-- 
+- So what this means is *do/dn* = 1 - *o***2 = 0.5
+- *n*.grad = 0.5
+- As we can see, the nodes next are *x1w1+x2w2* & *b*
+- Since *n* = *x1w1+x2w2* + *b*, the differentiation of *x1w1+x2w2* + *b* with respect to *b* is 1.0, so *x1w1+x2w2*'s local derivative = 1, and by symmetry we know *b*'s local derivative is also 1
+- Applying Chain rule, *x1w1+x2w2*.grad = 0.5, *b*.grad = 0.5
+- Tracing back, the node is a plus node, so *x1w1*.grad = 0.5, and *x2w2*.grad = 0.5
+- Going back even more, we can see that:
+    - x1.grad = w1.data * x1w1.grad = -1.5
+    - w1.grad = x1.data * x1w1.grad = 1.0
+    - x2.grad = w2.data * x2w2.grad = 0.5
+    - w2.grad = x2.data * x2w2.grad = 0.0
+
+Let's think about why w2.grad = 0 in a more intuitive way. The derivative always tells us the children's influence (in this case w2) on the final result. And so if we change w2.data, it will not have an impact on the output, as we are multiplying by 0. No changing means no derivative, which means that w2.grad = 0
+
+The graph now updates to this:
+
+![graph#2](/images/graph_2.png)
+
+
+# Automatically doing backpropagation
+Ok so let's end the suffering and implement this so that it runs more automatically. Now we understand how addition and multiplication determines the gradient of the variables, and implement these concepts. 
+
+The first step we need is to implement a _backward function to the init function that operates the chain rule at each node and chain up the outputs to the next nodes' inputs
+```python
+class Value:
+  
+    def __init__(self, data, _children=(), _op='', label=''):
+        self.data = data
+        self.grad = 0.0
+        self._backward = lambda: None
+        self._prev = set(_children)
+        self._op = _op
+        self.label = label
+
+    def __repr__(self):
+        return f"Value(data={self.data})"
+    
+    def __add__(self, other):
+        out = Value(self.data + other.data, (self, other), '+')
+        
+        def _backward():
+            self.grad += 1.0 * out.grad
+        other.grad += 1.0 * out.grad
+        out._backward = _backward
+        
+        return out
+
+    def __mul__(self, other):
+        out = Value(self.data * other.data, (self, other), '*')
+        
+        def _backward():
+            self.grad += other.data * out.grad
+        other.grad += self.data * out.grad
+        out._backward = _backward
+        
+        return out
+    
+    def tanh(self):
+        x = self.data
+        t = (math.exp(2*x) - 1)/(math.exp(2*x) + 1)
+        out = Value(t, (self, ), 'tanh')
+        
+        def _backward():
+            self.grad += (1 - t**2) * out.grad
+        out._backward = _backward
+        
+        return out
+```
+Now we can just call _backward() in order. But since grad is initialized to 0, make o.grad 1 first
+- o._backward() # n.grad becomes 0.5
+- n._backward() # b.grad = 0.5, x1w1x2w2.grad = 0.5
+- b._backward() is the empty function because it doesn't have leaf nodes
+- x1w1x2w2._backward() # x1w1 = 0.5, x2w2 = 0.5
+- x1w1._backward() # x1.grad = -1.5, w1.grad = 1.0
+- x2w2._backward() # x2.grad = 0.5, w2.grad = 0.0
+
+**Now let's get rid of calling _backward() manually.**
 
