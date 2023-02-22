@@ -480,15 +480,15 @@ b = Value(6.7, label='b')
 x1w1 = x1*w1; x1w1.label = 'x1*w1'
 x2w2 = x2*w2; x2w2.label = 'x2*w2'
 x1w1x2w2 = x1w1 + x2w2; x1w1x2w2.label = 'x1*w1 + x2*w2'
-n = x1w1x2w2 + b; n.label = n
+n = x1w1x2w2 + b; n.label = 'n'
 # activation function
-o = n.tanh()
+o = n.tanh(); o.label = 'o'
 
 draw_dot(n)
 ```
-```diff 
+
 ! Our current value class does not support the creation of a hyperbolic tangent function, because we only implemented add and multiply. We need to add exponents, subtraction, and division. However, we don't neccessarily need to do that, as the only thing we need to take care of is to know the local derivative. Therefore, although breaking it down into pieces is doable, I will implement tanh straightforwardly.
-```
+
 ```python
 class Value:
 
@@ -516,5 +516,38 @@ class Value:
         # One child, which is wrapped in a tuple
         out = Value(t, (self, ), 'tanh')
         return out
+    
+    #other codes
+
+    draw_dot(o)
 ```
+This should produce the following result of your data is the exactly the same as mine. The tanh function is now pretty much a micrograd supported node as an operation:
+![tanh](/images/tanh.png)
+
+Now, as long as we know the derivative of tanh, we can backpropagate through it.
+
+Since the tanh function graph looks like this
+![tanhfunc](/images/tanhfunc.png)
+
+We can see that the bigger the input the more the function squashes it. For example if *b* = 8, the input into the tanh function would be 2, which will output 0.96 in the function.
+
+### More backpropagation
+
+What we are trying to do now is to determine *do/dx1*, *do/dx2*, *do/dw1*, *do/dw2*.
+
+Of course, in a NN setting, we care more about the weights *w1* and *w2*, and *do/dw1* and *do/dw2* because they are the things we are changing in optimization.
+**Just for reminder, this is a single neuron, so eventually in the big puzzle there is going to be a loss function determining the accuracy of the NN, and we backpropagate with respect to that accuracy, while trying to increase it.**
+
+
+**Math time**
+- I will set *b*.data = 6.8813735870195432 for good local derivative outputs. You can use any number.
+- *do/do* = 1; o.grad = 1
+
+To backpropagate through tanh, we need to know the local derivative of tanh.
+- *o* = tanh(*n*)
+- *do/dn* = ?
+- Since in calculus d/dx tanh(x) = 1 - tanh(*x*)**2,
+- *do/dn* = 1 - tanh(*n*)**2 (the ** notation means ^, so 2^3 = 8, and 2**3 = 8, same thing.)
+- so what this means is *do/dn* = 1 - o**2
+- 
 
