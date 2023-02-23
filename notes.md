@@ -15,10 +15,11 @@ His github [here](https://github.com/karpathy)
 - However, it isn't really much of complex coding ( basic python + a bit of calculus kekw )
 - All you need to understand neural networks; Everything else is efficiency
 - Fundamentals
+- In this article, all data inputs will be numbers.
 
 ### Other
 - No actual math in Neural Network codes
-- Just to know what derivative is measuring, aka. instantaneous slope
+- Just to know what things are measuring, aka. derivative for instantaneous slope and impact on 
 
 ![derivative measure](/images/derivative.png)
 
@@ -635,4 +636,139 @@ Let's recap a briefly to clear up our minds: We have written a math expression, 
 
 We have to start from the last node, as you cannot perform backpropagation on a node before the nodes after it. It is like how all the leaves on the tree depends on the trunk, and their own respective branches.
 
-This ordering of graphs could be achieved by something called topological sorting. What topological sort does is that node *v* never gets visited until everything that it depends on gets visited. 
+This ordering of graphs could be achieved by something called topological sorting. What topological sort does is that node *v* never gets visited until everything that it depends on gets visited. All the edges goes from left to right.
+
+![topograph](/images/topograph.png)
+
+example code for topological sorting in the context of our NN setting:
+```python
+o.grad = 1 # Base case
+
+topo = []
+visited = set()
+def build_topo(v):
+    # If V is not visited, we mark it as visited
+    if v not in visited:
+        visited.add(v)
+        for child in v._prev:
+            # Iterates through its children nodes and builds topological sort in them
+            build_topo(child)
+        # after all its children has been processed it will append to the node list
+        # guarantee that it will be in the list after all its children have been processed
+        topo.append(v)
+
+# Topological sort starts at o.
+build_topo(o)
+
+# Builds the gradients
+for node in reversed(topo):
+    node._backward()
+```
+
+Now let's implement this into the Value class.
+
+Updated Value class:
+```python
+class Value:
+  
+    def __init__(self, data, _children=(), _op='', label=''):
+        self.data = data
+        self.grad = 0.0
+        self._backward = lambda: None
+        self._prev = set(_children)
+        self._op = _op
+        self.label = label
+
+    def __repr__(self):
+        return f"Value(data={self.data})"
+    
+    def __add__(self, other):
+        out = Value(self.data + other.data, (self, other), '+')
+        
+        def _backward():
+            self.grad += 1.0 * out.grad
+            other.grad += 1.0 * out.grad
+        out._backward = _backward
+        
+        return out
+
+    def __mul__(self, other):
+        out = Value(self.data * other.data, (self, other), '*')
+        
+        def _backward():
+            self.grad += other.data * out.grad
+        other.grad += self.data * out.grad
+        out._backward = _backward
+        
+        return out
+    
+    def tanh(self):
+        x = self.data
+        t = (math.exp(2*x) - 1)/(math.exp(2*x) + 1)
+        out = Value(t, (self, ), 'tanh')
+        
+        def _backward():
+            self.grad += (1 - t**2) * out.grad
+        out._backward = _backward
+        
+        return out
+    
+    def backward(self):
+        topo = []
+        visited = set()
+        def build_topo(v):
+        if v not in visited:
+            visited.add(v)
+            for child in v._prev:
+                build_topo(child)
+            topo.append(v)
+        build_topo(self)
+
+        self.grad = 1
+        for node in reversed(topo):
+            node._backward()
+
+    #other codes
+
+o.backward()
+```
+
+# Debug
+
+Ok you might see a bug right here:
+For example if we have this piece of code here
+```python
+a = Value(3.0, label='a')
+b = a + a; b.label='b'
+b.backward()
+draw_dot(b)
+```
+
+This will output this:
+
+![grad](/images/grad.png)
+
+There is two a nodes on top of each other, and the gradient is wrong here. Doing calculus, we know that *db/da* = 2
+
+Intuitively, *b* = *a* + *a* and we called backward(). In the addition function in the Value class, we can see that 
+```python
+self.grad += 1.0 * out.grad
+other.grad += 1.0 * out.grad
+```
+But since self & other are the same object, we can see that the grad gets reset in self.grad **and** other.grad.
+
+grad = 1.0 * out.grad => 1.0 => 1.0 * out.grad
+so a.grad got reset to 1.0 twice.
+
+Let's do a second example:
+```python
+a = Value(-2.0, label='a')
+b = Value(3.0, label='b')
+d = a * b    ; d.label = 'd'
+e = a + b    ; e.label = 'e'
+f = d * e    ; f.label = 'f'
+
+f.backward()
+
+draw_dot(f)
+```
