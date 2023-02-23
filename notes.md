@@ -629,5 +629,10 @@ Now we can just call _backward() in order. But since grad is initialized to 0, m
 - x1w1._backward() # x1.grad = -1.5, w1.grad = 1.0
 - x2w2._backward() # x2.grad = 0.5, w2.grad = 0.0
 
+Let's recap a briefly to clear up our minds: We have written a math expression, and we are trying to go backwards through the expression.
+
 **Now let's get rid of calling _backward() manually.**
 
+We have to start from the last node, as you cannot perform backpropagation on a node before the nodes after it. It is like how all the leaves on the tree depends on the trunk, and their own respective branches.
+
+This ordering of graphs could be achieved by something called topological sorting. What topological sort does is that node *v* never gets visited until everything that it depends on gets visited. 
