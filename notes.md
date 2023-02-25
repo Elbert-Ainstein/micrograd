@@ -20,6 +20,8 @@ His github [here](https://github.com/karpathy)
 ### Other
 - No actual math in Neural Network codes
 - Just to know what things are measuring, aka. derivative for instantaneous slope and impact on 
+- Jupyter notebook in github to let you check out the product.
+- Andrej's jupyter notebook is [here](https://github.com/karpathy/nn-zero-to-hero/blob/master/lectures/micrograd/). It's more completed and detailed.
 
 ![derivative measure](/images/derivative.png)
 
@@ -791,12 +793,8 @@ Intuitively, *b* = *a* + *a* and we called backward(). In the addition function 
 self.grad = 1.0 * out.grad
 other.grad = 1.0 * out.grad
 ```
-<<<<<<< HEAD
-But since self & other are the same object, we can see that the grad gets reset in self.grad **and** other.grad. Meaning that grad got reset twice.
-=======
 
-But since self & other are the same object, we can see that the grad gets reset in self.grad **and** other.grad.
->>>>>>> 6045a4083d8c380418e47a47ebc852d5617638ff
+But since self & other are the same object, we can see that the grad gets reset in self.grad **and** other.grad. Meaning that grad got reset twice.
 
 grad = 1.0 * out.grad => 1.0 => 1.0 * out.grad
 so a.grad got reset to 1.0 twice.
@@ -1144,7 +1142,7 @@ Rerunning should provide these results since the expressions have been elongated
 
 If we compare the results, the forward & backward passes should be working just fine. In some way, as long as the forward & backward passes are accurate, it doesn't really matter what operation it is.
 
-# Comparison to [Pytorch](https://pytorch.org/get-started) -- you can skip this part.
+# Comparison to [Pytorch](https://pytorch.org/get-started)
 ```python
 # pip install pytorch
 import torch
@@ -1167,15 +1165,15 @@ print('x1', x1.grad.item())
 print('w1', w1.grad.item())
 ```
 
-In micrograd, the engine only has scalar values because it is a scalar valued engine. However, in pytorch everything is based around tensors, which are ***n-dimensional*** arrays of ***scalars***. In here we only implemented one element into the tensor, but in normal situations we would be working with tensors that look a bit more closer to this:
+In micrograd, the engine only has scalar values because it is a scalar valued engine. However, in PyTorch everything is based around tensors, which are ***n-dimensional*** arrays of ***scalars***. In here we only implemented one element into the tensor, but in normal situations we would be working with tensors that look a bit more closer to this:
 
 ```python
 torch.Tensor([[1, 2, 3], [4, 5, 6]])
 ```
 
-That tensor above is a 2x3 array or scalars in a single representation. Running that returns its shape, which is ***torch.Size([2, 3])***, which is its dimensions. The reason of using .double is to keep the calculations the same as the Python lang, as it uses double precision, whilst pytorch uses single precision. Also, since those are leaf nodes, by default pytorch assumes they don't need gradients, so I setted it to true as well to explicitly say that we need gradients for those leaf node inputs.
+That tensor above is a 2x3 array or scalars in a single representation. Running that returns its shape, which is ***torch.Size([2, 3])***, which is its dimensions. The reason of using .double is to keep the calculations the same as the Python lang, as it uses double precision, whilst PyTorch uses single precision. Also, since those are leaf nodes, by default PyTorch assumes they don't need gradients, so I setted it to true as well to explicitly say that we need gradients for those leaf node inputs.
 
-After defining values, we can perform arithmetic, and in pytorch they have .data and .grad attributes like micrograd. The difference is .item() which is to strip the element from its Tensor like picking out a soldier from his battalion. 
+After defining values, we can perform arithmetic, and in PyTorch they have .data and .grad attributes like micrograd. The difference is .item() which is to strip the element from its Tensor like picking out a soldier from his battalion. 
 
 (o.item & o.data.item() produces the same result)
 
@@ -1183,7 +1181,320 @@ The results of running is this:
 
 ![pytorchResult](/images/pytorchResult.png)
 
-Essentially, pytorch can do just what we did, but on a special case where tensors are just single-element tensors. However, pytorch is just way more efficient as they work with tensors that can run parallel with each other.
+Essentially, PyTorch can do just what we did, but on a special case where tensors are just single-element tensors. However, PyTorch is just way more efficient as they work with tensors that can run parallel with each other.
 
 # Building a neural net library (aka multi-layer perceptron) in Micrograd
 
+First we are going to build a neural net, and then build out two layers of multi-layer perceptron. 
+
+We are going to make a neuron, but it will subscribe to PyTorch's API and how they made their models. Just like how we can match Pytorch to the autograd part, we can also do that on neural networks.
+
+There will be a lots of notes in the code below. I apologize but I cannot think of a way to put them outside of the code while explaining.
+```python
+class Neuron:
+    # How many inputs come to a neuron
+    def __init__(self, numOfInputs):
+        # Create a weight that is between -1 & 1
+        self.w = [Value(random.uniform(-1, 1)) for _ in range(numOfInputs)]
+        # Create a bias that is between -1 & 1 that controls the trigger happiness of the neuron
+        self.b = Value(random.uniform(-1, 1))
+
+    # Different value each time a neuron is called
+    def __call__(self, x):
+        # w * x + b
+        # w * x is a dot product
+        
+        # What we can do with __call__ is 
+        # if x = [2.0, 3.0]
+        # n = Neuron(2)
+        # we can call n(x) for an output
+        # Using the n(x) notation will call n.__call__()
+
+        # Now we can do the forward pass of the neuron
+        
+        # We pair up elements of w and x and multiply them
+
+        # Creates an iterator over two iterators to read tuples of corresponding values of w and x 
+
+        # w: [Value(data=1), Value(data=0.5), Value(data=0.3)]
+        # x: [1, 2, 3]
+        # the zip function: [(Value(data=1), 1), (Value(data=0.5), 2), (Value(data=0.3), 3)]
+
+        # zip(self.w, x)
+        activation = sum((wi*xi for wi, xi in zip(self.w, x)), self.b)
+
+        # Pass that through a linearity
+        out = act.tanh()
+        return out
+```
+
+Now let's make a layer of neurons. The neurons are not connected to each other if they are in the same layer, but they are fully connected to the layer prior to it, and evaluates independently.
+It looks like this:
+
+![layer](/images/layer.jpeg)
+
+```python
+class Layer:
+    def __init__(self, numOfInputs, numOfOutputs):
+        # initialize neurons with the amount of outputs we want.
+        self.neurons = [Neuron(numOfInputs) for _ in range(numOfOutputs)]
+    
+    def __call__(self, x):
+        outs = [n(x) for n in self.neurons]
+        return outs
+```
+
+Lets complete the picture and the MLP (multi-layer perceptron).
+
+As we can see in the pic, the outputs of the layer gets fully fed into the second layer.
+
+```python
+class MLP:
+    # instead of saying how many neurons in a single layer ( numOfOutputs ), we are taking a list of outputs and the list defines the sizes of layers in the MLP.
+    def __init__(self, numOfInputs, numOfOutputs):
+        size = [numOfInputs] + numOfOutputs
+        self.layers = [Layer(size[i], size[i + 1]) for i in range(len(numOfOutputs))]
+
+    def __call__(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+```
+
+Well, just to follow the picture, we can put in three input neurons, and two four-neuron hidden layers and a output unit.
+
+```python
+x = [2.0, 3.0, -1.0]
+n = MLP(3, [4, 4, 1])
+n(x)
+```
+
+Well to make it a bit nicer and aesthetic, lets just return the outs[0] in the Layers class if it is only a single thing to output.
+
+```python
+class Layer:
+    def __init__(self, numOfInputs, numOfOutputs):
+        self.neurons = [Neuron(numOfInputs) for _ in range(numOfOutputs)]
+    
+    def __call__(self, x):
+        outs = [n(x) for n in self.neurons]
+        return outs[0] if len(outs) == 1 else outs
+```
+
+You can run draw_dot(*n*(*x*)) if you want to too. You can see that the network gets upscaled a good amount haha :D
+
+## Updated code:
+```python
+class Neuron:
+    def __init__(self, numOfInputs):
+        self.w = [Value(random.uniform(-1, 1)) for _ in range(numOfInputs)]
+        self.b = Value(random.uniform(-1, 1))
+
+    def __call__(self, x):
+        activation = sum((wi*xi for wi, xi in zip(self.w, x)), self.b)
+        out = activation.tanh()
+        return out
+
+class Layer:
+    def __init__(self, numOfInputs, numOfOutputs):
+        self.neurons = [Neuron(numOfInputs) for _ in range(numOfOutputs)]
+    
+    def __call__(self, x):
+        outs = [n(x) for n in self.neurons]
+        return outs[0] if len(outs) == 1 else outs
+
+class MLP:
+    def __init__(self, numOfInputs, numOfOutputs):
+        size = [numOfInputs] + numOfOutputs
+        self.layers = [Layer(size[i], size[i + 1]) for i in range(len(numOfOutputs))]
+
+    def __call__(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+```
+
+# Loss function, Desired outputs, Neural Nets, and Collection of Parameters
+
+Let's make a small dataset first.
+```python
+# 4 possible inputs
+xs = [
+  [2.0, 3.0, -1.0], # desire 1.0
+  [3.0, -1.0, 0.5], # desire -1.0
+  [0.5, 1.0, 1.0],  # desire -1.0
+  [1.0, 1.0, -1.0], # desire 1.0
+]
+ys = [1.0, -1.0, -1.0, 1.0] # 4 desired targets
+
+# get the predictions
+ypred = [n(x) for x in xs]
+```
+
+Here is my output; Everyone should have different outputs because we haven't written any improvement functions aka loss functions
+
+![dataset_inacc_1](/images/dataset_1_inacc.png)
+
+As you can see, the first output I want to push it up, the second one I want it to push it down, third to go down, and fourth to go up.
+
+We need to find a number to measure the total performance of the NN and how well it is performing, which is the loss. As we can see, we are not performing well, being very off to the target number, making the loss high.
+
+What we are going to do is to implement a loss function called the [mean squared error](https://en.wikipedia.org/wiki/Mean_squared_error) loss. 
+
+```python
+[(yOutput - yGroundTruth)**2 for yGroundTruth, yOutput in zip(ys, ypred)]
+
+loss = sum([(yOutput - yGroundTruth)**2 for yGroundTruth, yOutput in zip(ys, ypred)])
+```
+
+We pair up the ground truths with the predictions and the zip iterates through the tuples. For each one of the four outputs we are taking the prediction and the ground truth (in the above is the array ys) and we are subtracting them and squaring them. The square is to ensure that we always get a positive number. Loss is the sum of all the examples of yOutput - yGroundTruth. Also, only if the output and ground truth are equal, aka your prediction hits the jackpot, loss will be zero. The more off target we are, the more loss there will be. 
+
+### Now let's minimize the loss
+
+Ok. This is the fun part. Try running 
+```python
+loss.backward()
+# first layer's first neuron's weights' grad
+n.layers[0].neurons[0].w[0].grad
+```
+
+This gave the following result for me:
+
+![loss_backward](/images/loss_backward.png)
+
+the loss.backward() gave the particular neuron's weight's grad a value. Since for this one the value is positive, that means the influence that it will give to the weight is positive, pushing the output up, and decreasing the loss. This info will also go towards every neuron and their parameters. 
+
+You can now run 
+```python
+draw_dot(loss)
+``` 
+and see for yourselves.
+
+## Now we need some code to collect the parameters of the neural network
+
+The purpose of this is to allow us to operate on all of them simultaneously. Every one of them we will nudge them a bit based on the gradient.
+
+***Note: PyTorch also has parameters on every nn Module. It does what we are doing right now, it just returns the parameter scalars. [Link](https://pytorch.org/docs/stable/nn.html)***
+
+Code here:
+
+```python
+class Neuron:
+    def __init__(self, numOfInputs):
+        self.w = [Value(random.uniform(-1, 1)) for _ in range(numOfInputs)]
+        self.b = Value(random.uniform(-1, 1))
+
+    def __call__(self, x):
+        activation = sum((wi*xi for wi, xi in zip(self.w, x)), self.b)
+        out = activation.tanh()
+        return out
+    
+    def parameters(self):
+        # list + list => list
+        return self.w + [self.b]
+    
+class Layer:
+    def __init__(self, numOfInputs, numOfOutputs):
+        self.neurons = [Neuron(numOfInputs) for _ in range(numOfOutputs)]
+    
+    def __call__(self, x):
+        outs = [n(x) for n in self.neurons]
+        return outs[0] if len(outs) == 1 else outs
+    
+    def parameters(self):
+        # The straightforward way 
+
+        # params = []
+        # for neuron in self.neurons:
+        #     # params of neuron
+        #     ps = neuron.parameters()
+        #     # put them on top of the params list
+        #     params.extend(ps)
+        # return params
+
+        # The more complex way
+
+        return [p for neuron in self.neurons for p in neuron.parameters()]
+
+
+class MLP:
+    def __init__(self, numOfInputs, numOfOutputs):
+        size = [numOfInputs] + numOfOutputs
+        self.layers = [Layer(size[i], size[i + 1]) for i in range(len(numOfOutputs))]
+
+    def __call__(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+    def parameters(self):
+        return [p for layer in self.layers for p in layer.parameters()]
+```
+ 
+Running 
+
+```python
+n.parameters()
+```
+
+should give you the result of a list of Value(data), which are all the weights and biases in the NN.
+
+Now, what we want to do is to change the data according to the gradient info. It basically is a tiny update in the gradient descent scheme. In gradient descent, we can imagine the gradient as a vector pointing towards the direction of increased loss. We are modifying p.data by a small step in the direction of the gradient. If the gradient is negative, we increase the data and vice versa, and it will decrease the loss. 
+
+```python
+for p in n.parameters():
+    # -0.01 as step size, it is also called the learning rate
+    p.data += -0.01 * p.grad
+```
+
+Before and after comparison:
+
+![before](/images/before.png)
+![after](/images/after.png)
+
+Essentially:
+
+Forward pass
+
+![forward](/images/forward.png)
+
+Backward pass
+
+![backward](/images/backward.png)
+
+Update
+
+![update](/images/update.png)
+
+And the NN will improve. Yeah. That's how to train the Neural Net. It isn't that intelligent, is it? >:)
+
+
+### Well let's make a function to automate it
+
+```python
+for k in range(20):
+
+    # forward pass
+    ypred = [n(x) for x in xs]
+    loss = sum([(yOutput - yGroundTruth)**2 for yGroundTruth, yOutput in zip(ys, ypred)])
+
+    # backward pass
+
+    # We have to zero the grad like how it is in the constructor, otherwise things mess up, as derivatives don't accumulate correctly.
+    for p in n.parameters():
+        p = 0.0
+    loss.backward()
+
+    # update
+    for p in n.parameters():
+        p.data += -0.05 * p.grad
+
+    print(k, loss.data)
+```
+
+
+# SUMMARY
+
+Neural networks are math expressions. Fairly simple ones, at least for multi-layer perceptrons, and they take input as data, and take in inputs, weights, and parameters of the NN. We use the forward pass followed by a loss function. The loss function measures the accuracy of the predictions, and the loss is low when predictions are matching targets/desired outputs. When the loss is low, the NN does what you want it to do in your problem. We use backpropragation to get the gradient, and we tune the params to decrease loss locally. This is repeated many times over gradient descent, which we follow the gradient info and it minimizes the loss. 
+
+These neurons are fascinating. For example in GPT, we get loads of text from the internet, and we are trying to get a neural net to predict to take a few words and to predict the next word in the sequence. That kind of NN would have billions and trillions of params, not the 41 we have. However, fundamentally it runs on the same principles as micrograd.
