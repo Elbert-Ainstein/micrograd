@@ -1141,3 +1141,49 @@ Rerunning should provide these results since the expressions have been elongated
 
 ![elong_1](/images/elong_1.png)
 ![elong_2](/images/elong_2.png)
+
+If we compare the results, the forward & backward passes should be working just fine. In some way, as long as the forward & backward passes are accurate, it doesn't really matter what operation it is.
+
+# Comparison to [Pytorch](https://pytorch.org/get-started) -- you can skip this part.
+```python
+# pip install pytorch
+import torch
+
+x1 = torch.Tensor([2.0]).double()                ; x1.requires_grad = True
+x2 = torch.Tensor([0.0]).double()                ; x2.requires_grad = True
+w1 = torch.Tensor([-3.0]).double()               ; w1.requires_grad = True
+w2 = torch.Tensor([1.0]).double()                ; w2.requires_grad = True
+b = torch.Tensor([6.8813735870195432]).double()  ; b.requires_grad = True
+n = x1*w1 + x2*w2 + b
+o = torch.tanh(n)
+
+print(o.data.item())
+o.backward() # pytorch has backward() like how we implemented
+
+print('---')
+print('x2', x2.grad.item()) # gradients
+print('w2', w2.grad.item())
+print('x1', x1.grad.item())
+print('w1', w1.grad.item())
+```
+
+In micrograd, the engine only has scalar values because it is a scalar valued engine. However, in pytorch everything is based around tensors, which are ***n-dimensional*** arrays of ***scalars***. In here we only implemented one element into the tensor, but in normal situations we would be working with tensors that look a bit more closer to this:
+
+```python
+torch.Tensor([[1, 2, 3], [4, 5, 6]])
+```
+
+That tensor above is a 2x3 array or scalars in a single representation. Running that returns its shape, which is ***torch.Size([2, 3])***, which is its dimensions. The reason of using .double is to keep the calculations the same as the Python lang, as it uses double precision, whilst pytorch uses single precision. Also, since those are leaf nodes, by default pytorch assumes they don't need gradients, so I setted it to true as well to explicitly say that we need gradients for those leaf node inputs.
+
+After defining values, we can perform arithmetic, and in pytorch they have .data and .grad attributes like micrograd. The difference is .item() which is to strip the element from its Tensor like picking out a soldier from his battalion. 
+
+(o.item & o.data.item() produces the same result)
+
+The results of running is this:
+
+![pytorchResult](/images/pytorchResult.png)
+
+Essentially, pytorch can do just what we did, but on a special case where tensors are just single-element tensors. However, pytorch is just way more efficient as they work with tensors that can run parallel with each other.
+
+# Building a neural net library (aka multi-layer perceptron) in Micrograd
+
