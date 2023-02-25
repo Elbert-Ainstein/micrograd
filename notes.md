@@ -595,8 +595,8 @@ class Value:
         out = Value(self.data + other.data, (self, other), '+')
         
         def _backward():
-            self.grad += 1.0 * out.grad
-        other.grad += 1.0 * out.grad
+            self.grad = 1.0 * out.grad
+            other.grad = 1.0 * out.grad
         out._backward = _backward
         
         return out
@@ -605,8 +605,8 @@ class Value:
         out = Value(self.data * other.data, (self, other), '*')
         
         def _backward():
-            self.grad += other.data * out.grad
-        other.grad += self.data * out.grad
+            self.grad = other.data * out.grad
+            other.grad = self.data * out.grad
         out._backward = _backward
         
         return out
@@ -617,7 +617,7 @@ class Value:
         out = Value(t, (self, ), 'tanh')
         
         def _backward():
-            self.grad += (1 - t**2) * out.grad
+            self.grad = (1 - t**2) * out.grad
         out._backward = _backward
         
         return out
@@ -686,8 +686,8 @@ class Value:
         out = Value(self.data + other.data, (self, other), '+')
         
         def _backward():
-            self.grad += 1.0 * out.grad
-            other.grad += 1.0 * out.grad
+            self.grad = 1.0 * out.grad
+            other.grad = 1.0 * out.grad
         out._backward = _backward
         
         return out
@@ -696,8 +696,8 @@ class Value:
         out = Value(self.data * other.data, (self, other), '*')
         
         def _backward():
-            self.grad += other.data * out.grad
-        other.grad += self.data * out.grad
+            self.grad = other.data * out.grad
+            other.grad = self.data * out.grad
         out._backward = _backward
         
         return out
@@ -708,7 +708,7 @@ class Value:
         out = Value(t, (self, ), 'tanh')
         
         def _backward():
-            self.grad += (1 - t**2) * out.grad
+            self.grad = (1 - t**2) * out.grad
         out._backward = _backward
         
         return out
@@ -752,10 +752,10 @@ There is two a nodes on top of each other, and the gradient is wrong here. Doing
 
 Intuitively, *b* = *a* + *a* and we called backward(). In the addition function in the Value class, we can see that 
 ```python
-self.grad += 1.0 * out.grad
-other.grad += 1.0 * out.grad
+self.grad = 1.0 * out.grad
+other.grad = 1.0 * out.grad
 ```
-But since self & other are the same object, we can see that the grad gets reset in self.grad **and** other.grad.
+But since self & other are the same object, we can see that the grad gets reset in self.grad **and** other.grad. Meaning that grad got reset twice.
 
 grad = 1.0 * out.grad => 1.0 => 1.0 * out.grad
 so a.grad got reset to 1.0 twice.
@@ -772,3 +772,330 @@ f.backward()
 
 draw_dot(f)
 ```
+
+![grad_2](/images/grad_2.png)
+
+What happens is that if a variable is used more than once, there will be an error with the gradients. The calculated gradients for nodes leading to *e* & *d* will overwrite each other. The solution to this is to use the multivariable variation of [chain rule](https://www.khanacademy.org/math/multivariable-calculus/multivariable-derivatives/differentiating-vector-valued-functions/a/multivariable-chain-rule-simple-version). Essentially, what happens is that we need to accumulate the gradients. 
+
+Updated Value class:
+
+```python
+class Value:
+  
+    def __init__(self, data, _children=(), _op='', label=''):
+        self.data = data
+        self.grad = 0.0
+        self._backward = lambda: None
+        self._prev = set(_children)
+        self._op = _op
+        self.label = label
+
+    def __repr__(self):
+        return f"Value(data={self.data})"
+    
+    def __add__(self, other):
+        out = Value(self.data + other.data, (self, other), '+')
+        
+        def _backward():
+            # The += operation is OK because we initialize grad with 0.
+            self.grad += 1.0 * out.grad
+            other.grad += 1.0 * out.grad
+        out._backward = _backward
+        
+        return out
+
+    def __mul__(self, other):
+        out = Value(self.data * other.data, (self, other), '*')
+        
+        def _backward():
+            self.grad += other.data * out.grad
+            other.grad += self.data * out.grad
+        out._backward = _backward
+        
+        return out
+    
+    def tanh(self):
+        x = self.data
+        t = (math.exp(2*x) - 1)/(math.exp(2*x) + 1)
+        out = Value(t, (self, ), 'tanh')
+        
+        def _backward():
+            self.grad += (1 - t**2) * out.grad
+        out._backward = _backward
+        
+        return out
+    
+    def backward(self):
+        topo = []
+        visited = set()
+        def build_topo(v):
+        if v not in visited:
+            visited.add(v)
+            for child in v._prev:
+                build_topo(child)
+            topo.append(v)
+        build_topo(self)
+
+        self.grad = 1
+        for node in reversed(topo):
+            node._backward()
+```
+
+Now the gradient is correct:
+
+![grad_correct](/images/grad_correct.png)
+
+![grad_correct_2](/images/grad_correct_2.png)
+
+*e*.backward() and *d*.backward() will deposit their individual gradients, and will add on top of each other.
+
+## If you have been questioning this article why am I not breaking down tanh, I am going to do it now to do some lightweighted excercising on operations.
+
+![tanhfunction](/images/tanhfunction.png)
+
+```python
+tanh = (math.exp(2*x) - 1)/(math.exp(2*x) + 1)
+```
+
+What we did with tanh above was making it a single function as we know its derivative and can backpropagate through it. However, we can also break down tanh as it also forces us to implement more operations, and to prove that it gives the same gradients :D
+
+Some things we need to clean up first though. Remember that when we do addition,  we did 
+
+```python
+self.data + other.data
+```
+
+This makes it so that if we want to do something like *a* = Value(2.0) and *a* + 1,
+python is just going to slap an error in your face saying that 1 has no attribute ***"data"***. This makes it that adding only allows to add Value objects with each other. For convenience of breaking up tanh(), we can add this:
+
+```python
+def __add__(self, other):
+    # If other is a Value object, then just use it as it is, but if other is not a Value object we will just assume it as a integer or a float value, and put it in a new Value instance with other as its data.
+    other = other if isinstance(other, Value) else Value(other)
+    out = Value(self.data + other.data, (self, other), '+')
+        
+    def _backward():
+        self.grad += 1.0 * out.grad
+        other.grad += 1.0 * out.grad
+    out._backward = _backward
+        
+    return out
+```
+
+Do the same thing for the other operations we have right now, aka the multiplication and division and subtraction operation. However, just putting in the if statement does not work by itself, because python cannot do something like 2 * *a* as it will just call 2 * *a* and not **a.__mul__(2)**, as there is not a thing like **2.__mul__(a)**. Therefore we can make a fallback function, to check if *a* can multiply 2 instead of trying to do the original 2 * *a*. Let's do the same thing for addition as well.
+
+```python
+def __mul__(self, other):
+    other = other if isinstance(other, Value) else Value(other)
+    out = Value(self.data * other.data, (self, other), '*')
+        
+    def _backward():
+        self.grad += other.data * out.grad
+        other.grad += self.data * out.grad
+    out._backward = _backward
+    
+    return out
+def __rmul__(self, other): # other * self
+    return self * other
+
+def __radd__(self, other): # other + self
+    return self + other
+```
+
+Looking at the tanh function, we should still put in the operations for exp and division. 
+
+Let's do exponents first.
+
+```python
+def exp(self):
+    x = self.data
+    out = Value(math.exp(x), (self, ), 'exp')
+
+    def _backward():
+        # you can kinda think about it here
+        self.grad += #??? 
+    out.grad = _backward
+
+    return out
+```
+
+Answer:
+
+Basically, we need to know what ther local derivative is. 
+
+***d/dx  e^x = e^x***
+
+```python
+def exp(self):
+    x = self.data
+    # e^x
+    out = Value(math.exp(x), (self, ), 'exp')
+
+    def _backward():
+        self.grad += out.data * out.grad
+    out.grad = _backward
+ 
+    return out
+```
+
+
+Divide function. Technically, if we do *a*/*b*, it is the same as *a* * (*b*^-1), and this makes the operation more general and easy to work with. We can redefine division as 
+
+```python
+def __truediv__(self, other): # self/other
+    return self * other**-1
+```
+
+Well we need a function to also be called when a value is raised to a power too right? In it *other* will be the power.
+
+```python
+def __pow__(self, other):
+    # making sure other = int or a float
+    assert isinstance(other, (int, float)), "only supports int/float powers for now"
+    out = Value(self.data**other, (self, ), f'**{other}')
+
+    def _backward():
+        self.grad += other * (self.data**(other - 1)) * out.grad
+    out._backward = _backward
+
+    return out
+```
+
+The last thing to do is to subtract. The way we do it is to implement a negation, and then subtracting the negation.
+
+```python
+# the negation
+def __neg__(self, other):
+    return self * -1
+
+# Subtraction
+def __sub__(self, other):
+    return self + (-other)
+```
+
+Ok let's change how we define *o* below to match the broken up tanh function.
+
+```python
+x1 = Value(2.0, label='x1')
+x2 = Value(0.0, label='x2')
+w1 = Value(-3.0, label='w1')
+w2 = Value(1.0, label='w2')
+b = Value(6.8813735870195432, label='b')
+x1w1 = x1*w1; x1w1.label = 'x1*w1'
+x2w2 = x2*w2; x2w2.label = 'x2*w2'
+x1w1x2w2 = x1w1 + x2w2; x1w1x2w2.label = 'x1*w1 + x2*w2'
+n = x1w1x2w2 + b; n.label = 'n'
+
+# --------------------------------------
+# e^2x-
+e = ( 2 * n ).exp(); e.label = 'e'
+o = ( e - 1 ) / ( e + 1 )
+# ---------------------------------------
+o.label='o'
+```
+
+Updated code:
+
+```python
+class Value:
+  def __init__(self, data, _children=(), _op='', label=''):
+    self.data = data
+    self.grad = 0.0
+    self._backward = lambda: None
+    self._prev = set(_children)
+    self._op = _op
+    self.label = label
+
+def __repr__(self):
+    return f"Value(data={self.data})"
+  
+def __add__(self, other):
+    other = other if isinstance(other, Value) else Value(other)
+    out = Value(self.data + other.data, (self, other), '+')
+    
+    def _backward():
+        self.grad += 1.0 * out.grad
+        other.grad += 1.0 * out.grad
+    out._backward = _backward
+    
+    return out
+
+def __mul__(self, other):
+    other = other if isinstance(other, Value) else Value(other)
+    out = Value(self.data * other.data, (self, other), '*')
+    
+    def _backward():
+        self.grad += other.data * out.grad
+        other.grad += self.data * out.grad
+    out._backward = _backward
+      
+    return out
+  
+  def __pow__(self, other):
+    assert isinstance(other, (int, float)), "only supporting int/float powers for now"
+    out = Value(self.data**other, (self,), f'**{other}')
+
+    def _backward():
+        self.grad += other * (self.data ** (other - 1)) * out.grad
+    out._backward = _backward
+
+    return out
+    
+def __rmul__(self, other): # other * self
+    return self * other
+
+def __truediv__(self, other): # self / other
+    return self * other**-1
+
+def __neg__(self): # -self
+    return self * -1
+
+def __sub__(self, other): # self - other
+    return self + (-other)
+
+def __radd__(self, other): # other + self
+    return self + other
+
+def tanh(self):
+    x = self.data
+    t = (math.exp(2*x) - 1)/(math.exp(2*x) + 1)
+    out = Value(t, (self, ), 'tanh')
+    
+    def _backward():
+        self.grad += (1 - t**2) * out.grad
+    out._backward = _backward
+    
+    return out
+  
+def exp(self):
+    x = self.data
+    out = Value(math.exp(x), (self, ), 'exp')
+    
+    def _backward():
+        self.grad += out.data * out.grad 
+    out._backward = _backward
+    
+    return out
+  
+  
+def backward(self):
+    
+    topo = []
+    visited = set()
+    def build_topo(v):
+      if v not in visited:
+        visited.add(v)
+        for child in v._prev:
+            build_topo(child)
+        topo.append(v)
+    build_topo(self)
+    
+    self.grad = 1.0
+    for node in reversed(topo):
+        node._backward()
+```
+
+Rerunning should provide these results since the expressions have been elongated.
+
+![elong_1](/images/elong_1.png)
+![elong_2](/images/elong_2.png)
