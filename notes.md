@@ -26,6 +26,7 @@ His github [here](https://github.com/karpathy)
 ### the code section + Processes and more notes
 
 This is the skeleton of the Value class; Keeps track of a single data value.
+
 ```python
 class Value:
     
@@ -37,10 +38,13 @@ class Value:
 a = Value(2.0)
 print(a)
 ```
+
 Therefore running it with 
+
 ```sh
 python engine.py
 ```
+
 gets us the answer of Value(data=2.0).
 The __repr__ method is making python printing the results in a nicer way, unless you want torture responses like this:
 
@@ -49,6 +53,7 @@ The __repr__ method is making python printing the results in a nicer way, unless
 ### However, doing operations on Value objects is not doable yet, like adding Value(a) with Value(b)
 
 So we need to add a way to do operations
+
 ```python
 class Value:
     
@@ -65,14 +70,17 @@ class Value:
 a = Value(2.0)
 b = Value(-3.0)
 print(a+b)
+
 ```
 In here, python will perform this:
 ```python
 a.__add__(b)
 ```
+
 this giving us a new Value object with the new number: Value(data=-1.0)
 
 Same thing for other operations, in this case implementing multiplication:
+
 ```python
 class Value:
     
@@ -97,8 +105,10 @@ d = a * b + c
 # (a__mul__(b)).__add__(c)
 print(d)
 ```
+
 Now the only thing that is missing is the connective tissue of the expression
 as we need to keep the expression graphs. What we need is pointers that shows what Values makes what other Values. In this case implementing a new variable called _children:
+
 ```python
 class Value:
     # by default __children will be an empty tuple
@@ -127,7 +137,9 @@ print(d._prev)
 # {Value(data=-6.0), Value(data=10.0)}
 # (a*b) + c
 ```
+
 Now we know the children of every single value, but don't know what operation created it. Therefore needed another element _op:
+
 ```python
 class Value:
 
@@ -155,9 +167,11 @@ d = a * b + c
 print(d._op)
 #'+', caused by addition of (a*b) + c
 ```
+
 ***Have full mathematical expression & building data structure, and now we know how each value is made, by what expression and from what other Values***
 
 We want a nice way to visualize the stuff we are building out now, just to visually see things, when it outputs things I recommend using jupyter notebook to see it:
+
 ```python
 from graphviz import Digraph
 
@@ -192,7 +206,9 @@ def draw_dot(root):
     
     return dot
 ```
+
 Of course, labels are needed:
+
 ```python
 class Value:
 
@@ -235,6 +251,7 @@ In neural networks, we are interested for the derivative of the loss function wi
 - Cannot really go for derivative of L with respect to data cause data is fixed
 - However weights will be iterated using the gradient info
 ### Now it is time to make a variable that maintains the derivative of L with respect to the weights, right now with respect to the values, and the name of the variable in this case is going to be called grad 
+
 ```python
 class Value:
 
@@ -264,8 +281,10 @@ d = e + c; d.label='d'
 f = Value(-2.0, label='f')
 L = d * f; L.label='L'
 ```
+
 *The grad is initially 0, which means in initialization we are assuming values does not affect the output. If grad = 0, the change of this variable does not change the loss function.*
 Now we can change the graphing code a bit:
+
 ```python
 from graphviz import Digraph
 
@@ -296,7 +315,9 @@ def draw_dot(root):
     
     return dot
 ```
+
 What the engine.py should look like right now:
+
 ```python
 from graphviz import Digraph
 
@@ -355,19 +376,24 @@ def draw_dot(root):
     
     return dot
 ```
+
 ### Time to work with the gradient.
 - For example what is the derivative of *L* with respect to L?
 - Well derivative of *L* with respect to *L* is 1.
 - so what if wecalculate things like *dL/dd* and *dL/df*
 
 if 
+
 ```python
 L = d * f
 ```
+
 ,
+
 ```python
 dL/dd = ?
 ```
+
 Well the answer is *f*, if you don't understand why you can do some derivative revision.
 
 The value of *d* is obvious, which is -2, 
@@ -377,6 +403,7 @@ this also makes the grad for variable *f* to be equal to the value of *d*, which
 + d.grad = -2.0
 ```
 Here is the code for the stuff above:
+
 ```python
 def weirdCalcs():
     h = 0.001
@@ -468,10 +495,12 @@ n = x1w1x2w2 + b; n.label = n
 
 draw_dot(n)
 ```
+
 This will generate an output that looks like this:
 ![x1w1](/images/x1w1.png)
 
 Now I will add the activation function in:
+
 ```python
 x1 = Value(2.0, label='x1')
 x2 = Value(0.0, label='x2')
@@ -523,6 +552,7 @@ class Value:
 
     draw_dot(o)
 ```
+
 This should produce the following result of your data is the exactly the same as mine. The tanh function is now pretty much a micrograd supported node as an operation:
 
 ![tanh](/images/tanh.png)
@@ -541,7 +571,7 @@ Of course, in a NN setting, we care more about the weights *w1* and *w2*, and *d
 **Just for reminder, this is a single neuron, so eventually in the big puzzle there is going to be a loss function determining the accuracy of the NN, and we backpropagate with respect to that accuracy, while trying to increase it.**
 
 
-**Math time**
+### Math time
 - I will set *b*.data = 6.8813735870195432 for good local derivative outputs. You can use any number.
 - *do/do* = 1; o.grad = 1
 
@@ -577,6 +607,7 @@ The graph now updates to this:
 Ok so let's end the suffering and implement this so that it runs more automatically. Now we understand how addition and multiplication determines the gradient of the variables, and implement these concepts. 
 
 The first step we need is to implement a _backward function to the init function that operates the chain rule at each node and chain up the outputs to the next nodes' inputs
+
 ```python
 class Value:
   
@@ -622,6 +653,7 @@ class Value:
         
         return out
 ```
+
 Now we can just call _backward() in order. But since grad is initialized to 0, make o.grad 1 first
 - o._backward() # n.grad becomes 0.5
 - n._backward() # b.grad = 0.5, x1w1x2w2.grad = 0.5
@@ -641,6 +673,7 @@ This ordering of graphs could be achieved by something called topological sortin
 ![topograph](/images/topograph.png)
 
 example code for topological sorting in the context of our NN setting:
+
 ```python
 o.grad = 1 # Base case
 
@@ -668,6 +701,7 @@ for node in reversed(topo):
 Now let's implement this into the Value class.
 
 Updated Value class:
+
 ```python
 class Value:
   
@@ -737,6 +771,7 @@ o.backward()
 
 Ok you might see a bug right here:
 For example if we have this piece of code here
+
 ```python
 a = Value(3.0, label='a')
 b = a + a; b.label='b'
@@ -750,17 +785,24 @@ This will output this:
 
 There is two a nodes on top of each other, and the gradient is wrong here. Doing calculus, we know that *db/da* = 2
 
-Intuitively, *b* = *a* + *a* and we called backward(). In the addition function in the Value class, we can see that 
+Intuitively, *b* = *a* + *a* and we called backward(). In the addition function in the Value class, we can see that
+
 ```python
 self.grad = 1.0 * out.grad
 other.grad = 1.0 * out.grad
 ```
+<<<<<<< HEAD
 But since self & other are the same object, we can see that the grad gets reset in self.grad **and** other.grad. Meaning that grad got reset twice.
+=======
+
+But since self & other are the same object, we can see that the grad gets reset in self.grad **and** other.grad.
+>>>>>>> 6045a4083d8c380418e47a47ebc852d5617638ff
 
 grad = 1.0 * out.grad => 1.0 => 1.0 * out.grad
 so a.grad got reset to 1.0 twice.
 
 Let's do a second example:
+
 ```python
 a = Value(-2.0, label='a')
 b = Value(3.0, label='b')
