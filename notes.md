@@ -172,7 +172,7 @@ print(d._op)
 
 ***Have full mathematical expression & building data structure, and now we know how each value is made, by what expression and from what other Values***
 
-We want a nice way to visualize the stuff we are building out now, just to visually see things, when it outputs things I recommend using jupyter notebook to see it:
+We want a nice way to visualize the stuff we are building out now, just to visually see things, when it outputs graphs I recommend using [jupyter notebook](https://jupyter.org/) to see the visualizations:
 
 ```python
 from graphviz import Digraph
