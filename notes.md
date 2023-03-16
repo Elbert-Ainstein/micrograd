@@ -108,7 +108,7 @@ d = a * b + c
 print(d)
 ```
 
-Now the only thing that is missing is the connective tissue of the expression
+Now the only thing that is missing is the connective tissue of the expression; the f(x) = ? part of the system.
 as we need to keep the expression graphs. What we need is pointers that shows what Values makes what other Values. In this case implementing a new variable called _children:
 
 ```python
@@ -172,7 +172,7 @@ print(d._op)
 
 ***Have full mathematical expression & building data structure, and now we know how each value is made, by what expression and from what other Values***
 
-We want a nice way to visualize the stuff we are building out now, just to visually see things, when it outputs things I recommend using jupyter notebook to see it:
+We want a nice way to visualize the stuff we are building out now, just to visually see things, when it outputs graphs I recommend using [jupyter notebook](https://jupyter.org/) to see the visualizations:
 
 ```python
 from graphviz import Digraph
@@ -243,12 +243,23 @@ L = d * f; L.label='L'
 
 # Time for some backpropagation action. Example #1: Simple expressions
 We run back from L and calculate the gradient along those intermediate values.
+
+## About gradients
+- It is like a map that shows the direction and steepness of a hill. 
+- imagine you are walking on a hilly path and you want to get to the bottom of the hill as quickly as possible. The gradient is like a guide that shows you which way to go and how steep the hill is.
+- In ML, the gradient's information is used to guide the weights of the program, to manipulate the output of operations to let the program predict in the direction of the gradient, therefore having better predictions.
+
 - Compute the derivative of the node *dL* with respect to *L*
 - *dL/dL* = 1
 - Derivative of L with respect to *f*, respect to *d*, etc.
 - Derivative of output with respect to leaf nodes, which will eventually be weights of a neural network, whilst other leaf nodes will be data, which is not oftenly used
 
 In neural networks, we are interested for the derivative of the loss function with respect to the weights of a NN. (*I'll be calling neural networks NN from now on*)
+
+### About Loss functions
+- A loss function in machine learning is like a scoreboard that tells you how well the machine is doing at its task. When a machine is learning to do something, it needs to know how well it's doing in order to improve.
+- Imagine you're playing a game of basketball and you want to keep track of how well you're doing. The scoreboard tells you how many points you've scored and how many points the other team has scored. In machine learning, the loss function is like the scoreboard. It measures how well the machine is doing at its task and how far off its predictions are from the actual values.
+- The goal in ML is to minimize the loss function, and minimizing the loss function gives better predictions
 
 - Cannot really go for derivative of L with respect to data cause data is fixed
 - However weights will be iterated using the gradient info
