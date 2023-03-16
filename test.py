@@ -14,7 +14,7 @@ x = [2.0, 3.0, -1.0]
 n = MLP(3, [4, 4, 1])
 n(x)
 
-for k in range(20):
+for k in range(50):
 
     # forward pass
     ypred = [n(x) for x in xs]
@@ -27,7 +27,7 @@ for k in range(20):
 
     # update
     for p in n.parameters():
-        p.data += -0.05 * p.grad
+        p.data += -0.01 * p.grad
 
     print(k, loss.data)
 
